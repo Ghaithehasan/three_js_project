@@ -1,189 +1,126 @@
-// import './style.css';
-// import * as THREE from 'three';
-
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// import { UltraHDRLoader } from 'three/examples/jsm/loaders/UltraHDRLoader.js';
-
-
-// import gsap from 'gsap';
-
-// // Canvas
-
-// const canvas = document.querySelector('canvas.webgl')
-// const sencse=new THREE.Scene();
-// const geometry = new THREE.BoxGeometry(1,1,1);
-// const material=new THREE.MeshBasicMaterial({color:"#A020F0"});
-// const mesh=new THREE.Mesh(geometry,material);
-
-// sencse.add(mesh);
-
-
-// const hdrLoader = new UltraHDRLoader();
-
-
-// // Axes helper
-
-// const sizes = {
-//     width:window.innerWidth,
-//     height:window.innerHeight
-// };
-
-
-
-// const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height);
-// camera.position.z=5;
-
-// sencse.add(camera);
-
-
-// // Controls 
-// const controls = new OrbitControls(camera , canvas);
-// controls.enableDamping=true;
-
-
-// const renderer = new THREE.WebGLRenderer({
-//     canvas: canvas
-// });
-// renderer.setSize(sizes.width, sizes.height);
-
-
-// const clock = new THREE.Clock();
-
-
-// const cursuer = {
-//     x:0,
-//     y:0
-// };
-// const event=window.addEventListener('mousemove',function(event)
-// {
-//     cursuer.x=event.clientX / sizes.width - 0.5;
-//     cursuer.y=-(event.clientY/ sizes.width - 0.5);
-// });
-
-// // Animation
-// const tick = () => 
-//     {
-
-//         const elaspedTime = clock.getElapsedTime();
-
-//         // camera.position.x=cursuer.x*10;
-//         // camera.position.y=cursuer.y*10;
-//         // camera.lookAt(mesh.position);
-
-//         controls.update();
-
-//         renderer.render(sencse, camera);
-//         window.requestAnimationFrame(tick);
-
-//     }
-
-//     tick();  
-
 import * as THREE from "three";
 import "./style.css";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import modelUrl from "./assets/models/satellite.glb";
-import modelUrl_2 from "./assets/models/earth.glb";
-
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import getStarfield from "./textures/stars/star.js";
+import earthbump1k from "./textures/01_earthbump1k.jpg";
+import img_2 from "./textures/05_earthcloudmaptrans.jpg";
+import img_3 from "./textures/8081_earthlights10k.jpg";
+import img_4 from "./textures/02_earthspec1k.jpg";
+import img_5 from "./textures/earth_clouds_8K.png";
+import img from "./textures/Earth4kTexture.png";
+import moon_img from "./textures/Moon.jpg";
+import moon_bum from "./textures/moon_bum.jpg";
+import { getFresnelMat } from "./textures/stars/getFrensilMat.js";
 const canvas = document.querySelector("canvas.webgl");
+// console.log('ss');ss
+
 
 const w = window.innerWidth;
 const h = window.innerHeight;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
-camera.position.set(0, 1, 5);
-
+camera.position.z = 5;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(w, h);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 2.5; // ضبط سطوع الصورة لجعلها واقعية أكثر
 document.body.appendChild(renderer.domElement);
+// THREE.ColorManagement.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+const earthGroup = new THREE.Group();
+earthGroup.rotation.z = -23.4 * Math.PI / 180;
+scene.add(earthGroup);
+new OrbitControls(camera, renderer.domElement);
+const detail = 12;
+const loader = new THREE.TextureLoader();
+const geometry = new THREE.IcosahedronGeometry(1, detail);
+const material = new THREE.MeshPhongMaterial({
+  map: loader.load(img),
+  specularMap: loader.load(img_4),
+  bumpMap: loader.load(earthbump1k),
+  bumpScale: 0.04,
+});
+// material.map.colorSpace = THREE.SRGBColorSpace;
+const earthMesh = new THREE.Mesh(geometry, material);
+earthGroup.add(earthMesh);
 
-// تحميل بيئة انعكاسية لتحسين المظهر
-const textureLoader = new THREE.TextureLoader();
-const envTexture = textureLoader.load("./assets/textures/space_hdr.jpg"); // استخدم صورة HDR مناسبة
-envTexture.mapping = THREE.EquirectangularReflectionMapping;
-scene.environment = envTexture;
+const lightsMat = new THREE.MeshBasicMaterial({
+  map: loader.load(img_3),
+  blending: THREE.AdditiveBlending,
+});
+const lightsMesh = new THREE.Mesh(geometry, lightsMat);
+earthGroup.add(lightsMesh);
 
-// إضافة إضاءة واقعية لتعزيز المودل
-const ambientLight = new THREE.AmbientLight(0xffffff, 2);
-scene.add(ambientLight);
+const cloudsMat = new THREE.MeshStandardMaterial({
+  map: loader.load(img_5),
+  transparent: true,
+  opacity: 0.8,
+  blending: THREE.AdditiveBlending,
+  alphaMap: loader.load(img_2),
+  
+  // alphaTest: 0.3,
+});
+const cloudsMesh = new THREE.Mesh(geometry, cloudsMat);
+cloudsMesh.scale.setScalar(1.003);
+earthGroup.add(cloudsMesh);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
-directionalLight.position.set(5, 5, 5);
-scene.add(directionalLight);
+const fresnelMat = getFresnelMat();
+const glowMesh = new THREE.Mesh(geometry, fresnelMat);
+glowMesh.scale.setScalar(1.01);
+earthGroup.add(glowMesh);
 
-const pointLight = new THREE.PointLight(0xffaa33, 6, 15);
-pointLight.position.set(-3, 3, 3);
-scene.add(pointLight);
+const stars = getStarfield({numStars: 2000});
+scene.add(stars);
 
-const spotLight = new THREE.SpotLight(0xffffff, 5);
-spotLight.position.set(0, 5, 5);
-spotLight.target.position.set(0, 0, 0);
-scene.add(spotLight);
+const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
+sunLight.position.set(-2, 0.5, 1.5);
+scene.add(sunLight);
 
-// تحميل المودل وتحسين الإعدادات البصرية
-const loader = new GLTFLoader();
-loader.load(
-  modelUrl_2,
-  (gltf) => {
-    const earth = gltf.scene;
-    earth.scale.set(1.5, 1.5, 1.5);
-    earth.position.set(0, 0, 0);
+// ===============================================================================================
 
-    earth.traverse((child) => {
-      if (child.isMesh) {
-        child.material.envMap = envTexture; // تفعيل تأثيرات البيئة
-        child.material.envMapIntensity = 2;
-        child.material.metalness = 1;
-        child.material.roughness = 0.2;
-        child.material.needsUpdate = true;
-      }
-    });
+const moonGroop=new THREE.Group();
+scene.add(moonGroop);
+const MoonMaterial = new THREE.MeshStandardMaterial({
+  map:loader.load(moon_img),
+  bumpMap:loader.load(moon_bum),
+  bumpScale:2,
+  roughness:0,
+  metalness:0.2,
 
-    scene.add(earth);
+});
 
-    // // تحريك الكرة الأرضية لجعلها أكثر ديناميكية
-    // function animateModel() {
-    //   earth.rotation.y += 0.005;
-    //   requestAnimationFrame(animateModel);
-    // }
-    // animateModel();
-  },
-  undefined,
-  (error) => {
-    console.error("فشل تحميل المودل:", error);
-  }
-);
+const moonMesh = new THREE.Mesh(geometry,MoonMaterial);
+moonMesh.position.set(2,0,0);
+moonMesh.scale.setScalar(0.27);
+moonGroop.add(moonMesh);
 
-// تحديث الحركة والرندر
+
+
+
+
+
+
+
+
 function animate() {
   requestAnimationFrame(animate);
+
+  earthMesh.rotation.y += 0.002;
+  lightsMesh.rotation.y += 0.002;
+  cloudsMesh.rotation.y += 0.0023;
+  glowMesh.rotation.y += 0.002;
+  stars.rotation.y -= 0.0002;
+  moonGroop.rotation.y +=0.01;
   renderer.render(scene, camera);
-  controls.update();
 }
 
 animate();
 
-// تعديل عند تغيير حجم النافذة
-function handleWindowResize() {
+function handleWindowResize () {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
-window.addEventListener("resize", handleWindowResize, false);
-
-// التحكم في ملء الشاشة
-window.addEventListener("dblclick", function () {
-  if (!document.fullscreenElement) {
-    canvas.requestFullscreen();
-  } else {
-    document.exitFullscreen();
-  }
-});
+window.addEventListener('resize', handleWindowResize, false);
